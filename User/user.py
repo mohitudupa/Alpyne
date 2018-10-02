@@ -1,21 +1,7 @@
 import pickle
 import time
-import ALP
+from functions import *
 
-
-def getattrs(module_name, module_alias):
-    x = __import__(module_name)
-    return[(module_alias, i) for i in dir(x) if callable(getattr(x, i))]
-
-
-def handle_request(conn, request):
-    conn.send(str(request.data).encode("utf-8"))
-    return conn.recv(4096)
-
-
-def send_data(request):
-    client = ALP.Client()
-    return client.start(handle_request, (request, ), *request.address)
 
 class Code():
     def __init__(self, module_name, module_alias=""):
@@ -38,6 +24,7 @@ class File():
         self.data = f.read()
         f.close()
 
+
 class Request():
     def __init__(self):
         self.code = pickle.dumps([])
@@ -51,12 +38,11 @@ class Request():
                 "compression": False,
             },
         }
-        self.address = ("127.0.0.1", 10000)
+        self.address = ("127.0.0.1", 8000)
 
         # Registering the request with the namenode
-        self.data["type"] = "0000"
-        send_data(self)
-
+        self.data["type"] = "00000"
+        send(self.data, self.address)
 
     def push_code(self, code):
         if not isinstance(code, list):
@@ -65,9 +51,9 @@ class Request():
         self.code = pickle.dumps(pickle.loads(self.code) + code)
 
         # Code to send the code pickle to namenode
-        self.data["type"] = "0001"
+        self.data["type"] = "00001"
         self.data["data"] = {"code": self.code}
-        send_data(self)
+        send(self.data, self.address)
 
     def push_files(self, files):
         if not isinstance(files, list):
@@ -76,10 +62,9 @@ class Request():
         self.files = pickle.dumps(pickle.loads(self.files) + files)
 
         # Code to send the files pickle to namenode
-        self.data["type"] = "0010"
+        self.data["type"] = "00010"
         self.data["data"] = {"files": self.files}
-
-        send_data(self)
+        send(self.data, self.address)
 
     def flush_code(self):
         self.code = pickle.dumps([])
@@ -89,36 +74,36 @@ class Request():
 
     def map(self, function, data):
         # Code to send map instruction to name node
-        self.data["type"] = "0011"
+        self.data["type"] = "00011"
         self.data["data"] = {
             "function": function,
             "data": data,
         }
-        send_data(self)
+        send(self.data, self.address)
 
-    def filter(self):
+    def filter(self, function, data):
         # Code to send map instruction to name node
-        self.data["type"] = "0100"
+        self.data["type"] = "00100"
         self.data["data"] = {
             "function": function,
             "data": data,
         }
-        send_data(self)
+        send(self.data, self.address)
 
-    def reduce(self):
+    def reduce(self, function, data):
         # Code to send map instruction to name node
-        self.data["type"] = "0101"
+        self.data["type"] = "00101"
         self.data["data"] = {
             "function": function,
             "data": data,
         }
-        send_data(self)
+        send(self.data, self.address)
 
     def get_async_result(self):
         # Code to ask result to the name node
-        self.data["type"] = "0110"
+        self.data["type"] = "00110"
         self.data["data"] = {}
-        return send_data(self)
+        return send(self.data, self.address)
 
     def get_result(self, maximum=100):
         delay = 1
