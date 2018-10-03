@@ -74,6 +74,11 @@ def client_result(data):
     pass
 
 
+def client_close(data):
+    print("close")
+    pass
+
+
 function_map = {
     "00000": client_register,
     "00001": client_push_code,
@@ -82,4 +87,5 @@ function_map = {
     "00100": client_filter,
     "00101": client_reduce,
     "00110": client_result,
+    "00111": client_close,
 }

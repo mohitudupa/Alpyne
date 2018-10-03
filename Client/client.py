@@ -114,3 +114,12 @@ class Request():
             delay = min(maximum, delay * 2)
             time.sleep(delay)
 
+    def close(self):
+        # Code to send close request to the namenode
+        self.data["type"] = "00111"
+        self.data["data"] = {}
+        send(self.data, self.address)
+        
+        for i in list(self.__dict__.keys()):
+            del self.__dict__[i]
+
