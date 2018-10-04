@@ -21,7 +21,6 @@ class Server():
     def start(self, target, args):
         
         conn, addr = self.sock.accept()
-        print("Connection accepted")
         # print("Accepted connection from:", addr)
         self.td.append(threading.Thread(target=target, args=(conn, addr, *args)))
         self.td[-1].start()
@@ -51,7 +50,6 @@ class Main():
 
     def start(self):
         while True:
-            print("In main loop")
             # Accept connections
             # Handle requests
             # Requests can be from datanodes and users

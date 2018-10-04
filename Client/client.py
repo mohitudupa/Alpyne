@@ -120,6 +120,7 @@ class Request():
         self.data["data"] = {}
         send(self.data, self.address)
         
-        for i in list(self.__dict__.keys()):
-            del self.__dict__[i]
-
+        self.__dict__ = {}
+        self.push_code = self.push_files = self.flush_code = self.flush_files = None
+        self.map = self.filter = self.reduce = self.get_async_result = self.get_result = None
+        self.close = None

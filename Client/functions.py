@@ -9,7 +9,7 @@ def send(data, address):
     except (ConnectionRefusedError, OSError) as e:
         print("Type:", type(e), "\nException:", e)
     
-    sock.send((str(data) + "-end-").encode("utf-8"))
+    sock.send((str(data)).encode("utf-8"))
     
     data = ""
     while True:

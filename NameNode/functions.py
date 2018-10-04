@@ -22,14 +22,22 @@ def send(data, address):
     return eval(data)
 
 
+def validate(data):
+    try:
+        eval(data)
+        return True
+    except Exception:
+        return False
+
+
 def handle(conn, addr, main):
     data = ""
     while True:
-        if data[-5:] == "-end-":
+        if validate(data):
             break
         data += conn.recv(4096).decode("utf-8")
 
-    data = eval(data[:-5])
+    data = eval(data)
     print(data)
     
     # Do someting with the data
