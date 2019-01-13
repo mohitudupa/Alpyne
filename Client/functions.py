@@ -20,8 +20,3 @@ def send(data, address):
 
     sock.close()
     return eval(data)
-
-
-def getattrs(module_name, module_alias):
-    x = __import__(module_name)
-    return[(module_alias, i) for i in dir(x) if callable(getattr(x, i))]

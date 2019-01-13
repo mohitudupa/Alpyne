@@ -3,124 +3,53 @@ import time
 from functions import *
 
 
-class Code():
-    def __init__(self, module_name, module_alias=""):
-        self.module_name = module_name
-        self.module_alias = module_alias if module_alias else module_name
-        
-        f = open(module_name + ".py", "r")
-        self.data = f.read()
-        f.close()
-
-        for attr in getattrs(module_name, self.module_alias):
-            self.__dict__[attr[1]] = attr
-
-
-class File():
-    def __init__(self, file_name):
-        self.file_name = file_name
-        
-        f = open(file_name, "r")
-        self.data = f.read()
-        f.close()
-
-
-class Request():
-    def __init__(self):
-        self.code = pickle.dumps([])
-        self.files = pickle.dumps([])
-        self.id = 1000
+class Client():
+    def __init__(self, ID, address = ("127.0.0.1", 8000)):
+        self.id = ID
         self.data = {
             "id": self.id,
             "auth": "Auth",
-            "options": {
-                "encryption": False,
-                "compression": False,
-            },
         }
-        self.address = ("127.0.0.1", 8000)
+        self.address = address
 
-        # Registering the request with the namenode
-        self.data["type"] = "00000"
-        send(self.data, self.address)
-
-    def push_code(self, code):
-        if not isinstance(code, list):
-            code = [code]
-
-        self.code = pickle.dumps(pickle.loads(self.code) + code)
-
-        # Code to send the code pickle to namenode
-        self.data["type"] = "00001"
-        self.data["data"] = {"code": self.code}
-        send(self.data, self.address)
-
-    def push_files(self, files):
-        if not isinstance(files, list):
-            files = [files]
-
-        self.files = pickle.dumps(pickle.loads(self.files) + files)
-
-        # Code to send the files pickle to namenode
-        self.data["type"] = "00010"
-        self.data["data"] = {"files": self.files}
-        send(self.data, self.address)
-
-    def flush_code(self):
-        self.code = pickle.dumps([])
-
-    def flush_files(self):
-        self.code = pickle.dumps([])
-
-    def map(self, function, data):
+    def map(self, inputs, outputs):
         # Code to send map instruction to name node
-        self.data["type"] = "00011"
+        self.data["type"] = 10
         self.data["data"] = {
-            "function": function,
-            "data": data,
+            "inputs": inputs,
+            "outputs": outputs,
         }
-        send(self.data, self.address)
+        return send(self.data, self.address)
 
-    def filter(self, function, data):
+    def filter(self, inputs, outputs):
         # Code to send map instruction to name node
-        self.data["type"] = "00100"
+        self.data["type"] = 11
         self.data["data"] = {
-            "function": function,
-            "data": data,
+            "inputs": inputs,
+            "outputs": outputs,
         }
-        send(self.data, self.address)
+        return send(self.data, self.address)
 
-    def reduce(self, function, data):
+    def reduce(self, inputs, outputs):
         # Code to send map instruction to name node
-        self.data["type"] = "00101"
+        self.data["type"] = 12
         self.data["data"] = {
-            "function": function,
-            "data": data,
+            "inputs": inputs,
+            "outputs": outputs,
         }
-        send(self.data, self.address)
+        return send(self.data, self.address)
 
-    def get_async_result(self):
+    def result(self):
         # Code to ask result to the name node
-        self.data["type"] = "00110"
+        self.data["type"] = 1
         self.data["data"] = {}
         return send(self.data, self.address)
 
-    def get_result(self, maximum=100):
+    def result_sync(self, maximum=100):
         delay = 1
         while(1):
             result = self.get_async_result()
             if result:
                 return result
-            delay = min(maximum, delay * 2)
+            delay = min(maximum, delay + 1)
             time.sleep(delay)
-
-    def close(self):
-        # Code to send close request to the namenode
-        self.data["type"] = "00111"
-        self.data["data"] = {}
-        send(self.data, self.address)
-        
-        self.__dict__ = {}
-        self.push_code = self.push_files = self.flush_code = self.flush_files = None
-        self.map = self.filter = self.reduce = self.get_async_result = self.get_result = None
-        self.close = None

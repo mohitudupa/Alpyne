@@ -1,4 +1,5 @@
 import socket
+import os
 
 
 def send(data, address):
@@ -9,7 +10,7 @@ def send(data, address):
     except (ConnectionRefusedError, OSError) as e:
         print("Type:", type(e), "\nException:", e)
     
-    sock.send((str(data) + "-end-").encode("utf-8"))
+    sock.send((str(data)).encode("utf-8"))
     
     data = ""
     while True:
@@ -30,70 +31,18 @@ def validate(data):
         return False
 
 
-def handle(conn, addr, main):
+def handle(conn, addr, name_node):
     data = ""
     while True:
-        if validate(data):
+        if data[-1:] == "}" and validate(data):
             break
         data += conn.recv(4096).decode("utf-8")
 
     data = eval(data)
-    print(data)
     
     # Do someting with the data
-    function_map[data["type"]](data)
+    result = name_node.function_map[data["type"]](data["id"], data["data"])
 
-    conn.send('{"status": "ack"}'.encode("utf-8"))
+    conn.send(str(result).encode("utf-8"))
     conn.close()
 
-
-def client_register(data):
-    print("register")
-    pass
-
-
-def client_push_code(data):
-    print("push code")
-    pass
-
-
-def client_push_files(data):
-    print("push files")
-    pass
-
-
-def client_map(data):
-    print("map")
-    pass
-
-
-def client_filter(data):
-    print("filter")
-    pass
-
-
-def client_reduce(data):
-    print("reduce")
-    pass
-
-
-def client_result(data):
-    print("result")
-    pass
-
-
-def client_close(data):
-    print("close")
-    pass
-
-
-function_map = {
-    "00000": client_register,
-    "00001": client_push_code,
-    "00010": client_push_files,
-    "00011": client_map,
-    "00100": client_filter,
-    "00101": client_reduce,
-    "00110": client_result,
-    "00111": client_close,
-}
