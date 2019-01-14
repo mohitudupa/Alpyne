@@ -1,6 +1,7 @@
 import pickle
 import time
-from functions import *
+import socket
+from .functions import *
 import uuid, threading
 
 
@@ -14,9 +15,9 @@ import uuid, threading
 "10110"
 """
 
-
-class Server():
-    def __init__(self, ip="127.0.0.1", port=5000, connections=5):
+class Server:
+    def __init__(self, ip="127.0.0.1", port=8000, connections=5):
+        
         self.td = []
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_address = (ip, port)
@@ -27,19 +28,23 @@ class Server():
         except OSError as e:
             print("Type:", type(e), "\nException:", e)
 
-    def start(self, target, args):
-        
-        conn, addr = self.sock.accept()
-        # print("Accepted connection from:", addr)
-        self.td.append(threading.Thread(target=target, args=(conn, addr, *args)))
-        self.td[-1].start()
+    def start(self, target, arg):
+        try:
+            while True:
+                conn, addr = self.sock.accept()
+                # print("Accepted connection from:", addr)
+                self.td.append(threading.Thread(target=target, args=(conn, addr, arg)))
+                self.td[-1].start()
 
-    def stop(self):
+                if len(self.td) > 50:
+                    self.td.pop(0)
+        except Exception as e:
+            print("Exception", e)
+        finally:
+            for t in self.td:
+                t.join()
         
-        for t in self.td:
-            t.join()
-        
-        self.sock.close()
+            self.sock.close()
 
 
 class Code():

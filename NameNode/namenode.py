@@ -2,7 +2,8 @@ import socket
 import threading
 import pickle
 import time
-from functions import *
+import uuid
+from .functions import *
 import containers
 
 db_host, db_port = "localhost", 27017
@@ -32,7 +33,7 @@ class Server:
                 self.td[-1].start()
 
                 if len(self.td) > 50:
-                    td.pop(0)
+                    self.td.pop(0)
         except Exception as e:
             print("Exception", e)
         finally:
@@ -44,7 +45,7 @@ class Server:
 
 class DataNode:
     def __init__(self, data_node_id, server_address):
-        self.id = ID
+        self.id = data_node_id
         self.score = None
         self.server_address = server_address;
         self.assigned_jobs = 0
@@ -62,17 +63,17 @@ class Client:
         self.state = "stop"
         self.username = username
         self.password = password
-        self.containers = container.Containers(db_host, db_port, username, password, user_id)
+        self.containers = containers.Containers(db_host, db_port, username, password, user_id)
 
-    def assign_job(input_container, output_container, operation):
+    def assign_job(self, input_container, output_container, operation):
         self.input_container = input_container
         self.output_container = output_container
         self.operation = operation
 
     def assign_workers(self, data_nodes):
-        client.containers.open(input_container)
+        self.containers.open(self.input_container)
         
-        size = client.containers.len_files()
+        size = self.containers.len_files()
         pool_values = []
         for data_node in data_nodes:
             pool_values.append(data_node.score / (data_node.assigned_jobs + 1))
@@ -93,25 +94,26 @@ class Job:
         self.jobs = {}
         self.state = "init"
 
-    def assign_workets(self, data_nodes, client):
-        client.containers.open(input_container)
+    def assign_workers(self, data_nodes, client):
+        client.containers.open(self.input_container)
         
-        client.self.input_container = input_container
-        self.output_container = output_container
+        client.self.input_container = self.input_container
+        self.output_container = self.output_container
 
 
 
         # Get worker list
-        for data_node in data_nodes
+        for data_node in data_nodes:
+            pass
         self.state = "ready"
         pass
 
-    def start_workers(self, data_nodes):
+    def start_workers(self):
         # Send job to the worker
         self.state = "start"
         pass
 
-    def track_workers(self, worker_id):
+    def track_workers(self):
         # Track workers who have finished their  jobs
         # If all jobs are finished mark job as finished
         pass
@@ -158,33 +160,33 @@ class NameNode:
 
         # Do type checking and validation
         try:
-            client.containers.open(container)
+            client.containers.open(input_container)
             if not client.containers.len_files():
                 raise ValueError("Invalid input length")
         except ValueError as ve:
             return {"status": str(ve)}
         except Exception as e:
-            return {"status": "General error"}
+            return {"status": "General error" + str(e)}
 
         # Create job listing
         job_id = uuid.uuid1().hex
         job = Job(user_id, job_id, input_container, output_container, "map")
 
-        self.clients[user_id].jobs[jod_id] = job
+        self.clients[user_id].jobs[job_id] = job
 
         # Get available data nodes
-        job.assign_workers(self.data_nodes)
+        job.assign_workers(self.data_nodes, client)
 
         # Distribute and send jobs to datanodes
         job.start_workers()
 
-        return {"status": "Data queued for map", "job_id", job_id}
+        return {"status": "Data queued for map", "job_id": job_id}
 
-    def client_filter(self, ID, data):
+    def client_filter(self, user_id, data):
         print("filter")
         print(data)
-        inputs = data["inputs"]
-        outputs = data["outputs"]
+        input_container = data["input_container"]
+        output_container = data["output_container"]
 
         # Check the user
         if user_id not in users:
@@ -194,7 +196,7 @@ class NameNode:
 
         # Do type checking and validation
         try:
-            client.containers.open(container)
+            client.containers.open(input_container)
             if not client.containers.len_files():
                 raise ValueError("Invalid input length")
         except ValueError as ve:
@@ -204,23 +206,23 @@ class NameNode:
 
         # Create job listing
         job_id = uuid.uuid1().hex
-        job = Job(user_id, job_id, inputs, outputs, "filter")
+        job = Job(user_id, job_id, input_container, output_container, "filter")
 
-        self.clients[user_id].jobs[jod_id] = job
+        self.clients[user_id].jobs[job_id] = job
 
         # Get available data nodes
-        job.assign_workers()
+        job.assign_workers(self.data_nodes, client)
 
         # Distribute and send jobs to datanodes
         job.start_workers()
 
-        return {"status": "Data queued for map", "job_id", job_id}
+        return {"status": "Data queued for map", "job_id": job_id}
 
-    def client_reduce(self, ID, data):
+    def client_reduce(self, user_id, data):
         print("reduce")
         print(data)
-        inputs = data["inputs"]
-        outputs = data["outputs"]
+        input_container = data["input_container"]
+        output_container = data["output_container"]
 
         # Check the user
         if user_id not in users:
@@ -230,27 +232,27 @@ class NameNode:
 
         # Do type checking and validation
         try:
-            client.containers.open(container)
+            client.containers.open(input_container)
             if not client.containers.len_files():
                 raise ValueError("Invalid input length")
         except ValueError as ve:
             return {"status": str(ve)}
         except Exception as e:
-            return {"status": "General error"}
+            return {"status": "General error " + str(e)}
 
         # Create job listing
         job_id = uuid.uuid1().hex
-        job = Job(user_id, job_id, inputs, outputs, "reduce")
+        job = Job(user_id, job_id, input_container, output_container, "reduce")
 
-        self.clients[user_id].jobs[jod_id] = job
+        self.clients[user_id].jobs[job_id] = job
 
         # Get available data nodes
-        job.assign_workers()
+        job.assign_workers(self.data_nodes, client)
 
         # Distribute and send jobs to datanodes
         job.start_workers()
 
-        return {"status": "Data queued for map", "job_id", job_id}
+        return {"status": "Data queued for map", "job_id": job_id}
 
     def client_result(self, ID, data):
         print("result")
