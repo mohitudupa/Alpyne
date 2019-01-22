@@ -1,31 +1,89 @@
+from typing import NewType, List
 from pymongo import MongoClient, ReturnDocument
 import gridfs, uuid
 
 containers = None
 
+
 class Containers:
-    def __init__(self, db_host: str, db_port: int, username: str, password: str, ID: str):
+    def __init__(self, db_host: str, db_port: int, username: str, password: str, client_id: str):
+        """
+            Arguments:
+                db_host: str    -host-ip or host-name of the mongo database
+                db_port: int    -port number of the mongo database
+                username: str   -Username of the mongo database
+                password: str   -Password for the user account
+                client_id: str  -Client ID; Name of the database assigned to the user
+
+            Action:
+                Creates a containers object for the user
+            
+            Return:
+                Returns an object of the class Containers
+        """
         self.client = MongoClient(db_host, db_port)
-        self.db = self.client[ID]
+        self.db = self.client[client_id]
         self.fs = gridfs.GridFS(self.db)
         self.containers = self.db["state"].find_one({"type": "containers"})
 
-    def list_containers(self):
+    def list_containers(self) -> list:
+        """
+            Arguments:
+                None
+            Action:
+                Lists all the containers of the user. All the containers are stored in the db of the name client_id
+            
+            Return:
+                A list of container-names(str)
+        """
         return list(self.containers.keys())
 
     def open(self, container_name: str) -> None:
+        """
+            Arguments:
+                container_name: str -The name of the container to be opened
+            Action:
+                Makes container_name the active container of the container object
+            Return:
+                None
+        """
         if container_name not in self.containers:
             self.containers[container_name] = {}
 
         self.container = container_name
 
-    def list_files(self):
+    def list_files(self) -> list:
+        """
+            Arguments:
+                None
+            Action:
+                Lists all the file names in the active container
+            Return:
+                Returns a list of all the filenames(str)
+        """
         return list(self.containers[self.container].keys())
 
-    def len_files(self):
+    def len_files(self) -> int:
+        """
+            Arguments:
+                None
+            Action:
+                Number of files in the active container
+            Return:
+                Returns an integer of number of files
+        """
         return len(self.containers[self.container].keys())
 
-    def recover_container(self):
+    def recover_container(self) -> None:
+        """
+            Arguments:
+                None
+            Action:
+                Recovers missing or untracked files and moves them into the recovery container
+                A possible reason for missing files could be unexpected program termination
+            Return:
+                None
+        """
         file_ids = set([file._id for file in self.fs.find()])
 
         del self.containers["_id"], self.containers["type"]
@@ -41,7 +99,16 @@ class Containers:
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {"recovery": self.containers["recovery"]}}, 
                 return_document=ReturnDocument.AFTER)
 
-    def put(self, files, file_names: list = None) -> None:
+    def put(self, files: list, file_names: list = None) -> None:
+        """
+            Arguments:
+                files: list         -A list of file-handlers(read, binary) of binary strings
+                file_names: list    -A list of filenames(str). This is an optional argument. Default value is a list of uuids
+            Action:
+                Inserts one or more files from the files(list) as filenames(list) in the active container
+            Return:
+                None
+        """
         file_names = file_names or [uuid.uuid1().hex for _ in files]
 
         container_map = self.containers[self.container]
@@ -57,11 +124,27 @@ class Containers:
                 return_document=ReturnDocument.AFTER)
 
     def get(self, file_names: list) -> list:
+        """
+            Arguments:
+                file_names: list    -A list of filenames(syr) to be retrived
+            Action:
+                Retrives a list of file-handlers of the filenames from the file_names(list) in the active contaioner in binary read mode
+            Return:
+                Returns a list of file-handlers
+        """
         container_map = self.containers[self.container]
 
         return [self.fs.get(container_map[file_name]) for file_name in file_names]
 
     def delete(self, file_names: list) -> None:
+        """
+            Arguments:
+                file_names: list    -A list of filenames(syr) to be deleted
+            Action:
+                Deletes all the filess of the filenames from the file_names(list) in the active contaioner
+            Return:
+                None
+        """
         container_map = self.containers[self.container]
 
         try:
@@ -75,7 +158,18 @@ class Containers:
             self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: container_map}}, 
                 return_document=ReturnDocument.AFTER)
 
-    def move(self, destination_container, source_file_names, destination_file_names = None):
+    def move(self, destination_container: str, source_file_names: list, destination_file_names: list = None) -> None:
+        """
+            Arguments:
+                destination_contaienr: str      -Destination container name
+                source_file_names: list         -A list of filenames(syr) to be moved to the destination container
+                destination_file_names: list    -A list of destination filenames(str) to which the moved files will be renamed to. Default value is the same as source filenames
+            Action:
+                Moves one or more files of the name in the source_file_names list from the active container to the container name of destination_containmer_name.
+                Can be used for renaming files within the same container (destination_container_name is the same as the active container name)
+            Return:
+                None
+        """
         destination_file_names = destination_file_names or source_file_names
 
         source_container_map = self.containers[self.container]
@@ -90,6 +184,15 @@ class Containers:
                 destination_container: destination_container_map}}, return_document=ReturnDocument.AFTER)
 
     def put_one(self, file, file_name: str = uuid.uuid1().hex) -> None:
+        """
+            Arguments:
+                file: file-handler / binary string  -A file handler or the binary string of the data to be put into a file in the container
+                file_name: str                      -A string file_name. Default value is a uuid
+            Action:
+                Inserts one file into the active container
+            Return:
+                None
+        """
         container_map = self.containers[self.container]
 
         if file_name not in container_map:
@@ -98,12 +201,28 @@ class Containers:
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: container_map}}, 
                 return_document=ReturnDocument.AFTER)
 
-    def get_one(self, file_name: str):
+    def get_one(self, file_name: str) -> gridfs.grid_file.GridOut:
+        """
+            Arguments:
+                file_name: str  -Name of the file to be retrived
+            Action:
+                Get a file handler in binary read mode of the name file_name from the active contaienr
+            Return:
+                Returns the file handler
+        """
         container_map = self.containers[self.container]
 
         return self.fs.get(container_map[file_name])
 
     def delete_one(self, file_name: str) -> None:
+        """
+            Arguments:
+                file_name: str  -Name of the file to be deleted
+            Action:
+                Delete a file of the name file_name from the active contaienr
+            Return:
+                None
+        """
         container_map = self.containers[self.container]
 
         if file_name in container_map:
@@ -113,7 +232,18 @@ class Containers:
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: container_map}}, 
                 return_document=ReturnDocument.AFTER)
 
-    def move_one(self, destination_container, source_file_name, destination_file_name = None):
+    def move_one(self, destination_container: str, source_file_name: str, destination_file_name: str = None) -> None:
+        """
+            Arguments:
+                destination_contaienr: str  -Destination container name
+                source_file_name: str       -Filename of the file to be moved to the destination container
+                destination_file_name: str  -Filename of the file to which the moved file will be renamed to. Default value is the same as source filename
+            Action:
+                Moves one file of the name in the source_file_names list from the active container to the container name of destination_containmer_name.
+                Can be used for renaming files within the same container (destination_container_name is the same as the active container name)
+            Return:
+                None
+        """
         destination_file_name = destination_file_name or source_file_name
 
         source_container_map = self.containers[self.container]
@@ -126,12 +256,9 @@ class Containers:
                 destination_container: destination_container_map}}, return_document=ReturnDocument.AFTER)
 
 
-
 def main():
     global containers
-    containers = Containers("localhost", 27017, "mohit", "password for fs", "mohit")
-
-    print(containers.list_containers())
+    containers = Containers("localhost", 27017, "mohit", "password for fs", "80cf72a4083211e9aaacf8cab814c762")
 
 
 main()

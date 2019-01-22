@@ -4,7 +4,7 @@ import pickle
 import time
 import uuid
 from .functions import *
-import containers
+from .containers import *
 
 db_host, db_port = "localhost", 27017
 users = {
@@ -63,7 +63,7 @@ class Client:
         self.state = "stop"
         self.username = username
         self.password = password
-        self.containers = containers.Containers(db_host, db_port, username, password, user_id)
+        self.containers = Containers(db_host, db_port, username, password, user_id)
 
     def assign_job(self, input_container, output_container, operation):
         self.input_container = input_container
