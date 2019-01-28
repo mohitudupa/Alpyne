@@ -25,6 +25,26 @@ class Containers:
         self.db = self.client[client_id]
         self.fs = gridfs.GridFS(self.db)
         self.containers = self.db["state"].find_one({"type": "containers"})
+    
+    def __enter__(self, db_host: str, db_port: int, username: str, password: str, client_id: str):
+        """
+            Arguments:
+                db_host: str    -host-ip or host-name of the mongo database
+                db_port: int    -port number of the mongo database
+                username: str   -Username of the mongo database
+                password: str   -Password for the user account
+                client_id: str  -Client ID; Name of the database assigned to the user
+
+            Action:
+                Creates a containers object for the user
+            
+            Return:
+                Returns an object of the class Containers
+        """
+        self.client = MongoClient(db_host, db_port)
+        self.db = self.client[client_id]
+        self.fs = gridfs.GridFS(self.db)
+        self.containers = self.db["state"].find_one({"type": "containers"})
 
     def list_containers(self) -> list:
         """
@@ -134,7 +154,7 @@ class Containers:
         """
         container_map = self.containers[self.container]
 
-        return [self.fs.get(container_map[file_name]) for file_name in file_names]
+        return [self.fs.get(container_map[file_name], None) for file_name in file_names]
 
     def delete(self, file_names: list) -> None:
         """
@@ -148,10 +168,10 @@ class Containers:
         container_map = self.containers[self.container]
 
         try:
-            for file_name in file_names:
+            [self.fs.delete(container_map.pop(file_name)) for file_name in file_names if file_name in container_map]
+            '''for file_name in file_names:
                 if file_name in container_map:
-                    self.fs.delete(container_map[file_name])
-                    del container_map[file_name]
+                    self.fs.delete(container_map.pop(file_name))'''
         except Exception as e:
             raise e
         finally:
@@ -177,8 +197,7 @@ class Containers:
 
         for source_file_name, destination_file_name in zip(source_file_names, destination_file_names):
             if source_file_name in source_container_map:
-                destination_container_map[destination_file_name] = source_container_map[source_file_name]
-                del source_container_map[source_file_name]
+                destination_container_map[destination_file_name] = source_container_map.pop(source_file_name)
 
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: source_container_map, 
                 destination_container: destination_container_map}}, return_document=ReturnDocument.AFTER)
@@ -212,7 +231,7 @@ class Containers:
         """
         container_map = self.containers[self.container]
 
-        return self.fs.get(container_map[file_name])
+        return self.fs.get(container_map[file_name], None)
 
     def delete_one(self, file_name: str) -> None:
         """
@@ -226,8 +245,7 @@ class Containers:
         container_map = self.containers[self.container]
 
         if file_name in container_map:
-            self.fs.delete(container_map[file_name])
-            del container_map[file_name]
+            self.fs.delete(container_map.pop(file_name))
         
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: container_map}}, 
                 return_document=ReturnDocument.AFTER)
@@ -249,12 +267,32 @@ class Containers:
         source_container_map = self.containers[self.container]
         destination_container_map = self.containers.get(destination_container, {})
 
-        destination_container_map[destination_file_name] = source_container_map[source_file_name]
-        del source_container_map[source_file_name]
+        destination_container_map[destination_file_name] = source_container_map.pop(source_file_name)
 
         self.containers = self.db.state.find_one_and_update({"type": "containers"}, {"$set": {self.container: source_container_map, 
                 destination_container: destination_container_map}}, return_document=ReturnDocument.AFTER)
 
+    def close(self) -> None:
+        """
+            Arguments:
+                None
+            Action:
+                Closes the database cconnection client
+            Return:
+                None
+        """
+        self.client.close()
+    
+    def __exit__(self) -> None:
+        """
+            Arguments:
+                None
+            Action:
+                Closes the database cconnection client
+            Return:
+                None
+        """
+        self.client.close()
 
 def main():
     global containers
