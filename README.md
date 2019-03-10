@@ -1,6 +1,6 @@
-#Alpyne
+# Alpyne
 
-##A simple, easy install framework for grid computing
+## A simple, easy install framework for grid computing
 
 ## Prerequisites
     1:  Install python 3.7 or higher and pip (if needed)
