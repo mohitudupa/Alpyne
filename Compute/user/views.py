@@ -7,11 +7,15 @@ from django.contrib.auth.models import User
 from pymongo import MongoClient
 
 import configparser
+import os
 
 from . import serializers
 
+
+project_path = os.environ.get('PROJECTPATH')
+
 parser = configparser.ConfigParser()
-parser.read('.config')
+parser.read(os.path.join(project_path, '.config'))
 
 db_host = parser.get('db', 'db_host')
 db_port = int(parser.get('db', 'db_port'))

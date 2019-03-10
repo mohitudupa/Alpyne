@@ -1,11 +1,13 @@
 import os
 from subprocess import Popen
 from Containers import containers as fs
-from configparser import ConfigParser
+import configparser
 
 
-parser = ConfigParser()
-parser.read('.config')
+project_path = os.environ.get('PROJECTPATH')
+
+parser = configparser.ConfigParser()
+parser.read(os.path.join(project_path, '.config'))
 
 db_host = parser.get('db', 'db_host')
 db_port = int(parser.get('db', 'db_port'))
@@ -99,7 +101,7 @@ def run(data: dict, file_data: dict, update_job_status, update_job_pid):
 
     update_job_status(data['job_id'], 'running')
 
-    process = Popen(['python', f'Compute/engine/run.py',
+    process = Popen(['python', os.path.join(project_path, 'Compute/engine/run.py'),
                      f'{path}/{data["job_id"]}',
                      data['code_file_name'].split('.')[0]])
 
