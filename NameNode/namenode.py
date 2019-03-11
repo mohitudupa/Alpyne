@@ -2,9 +2,11 @@ import socket
 import threading
 import pickle
 import time
+import math
 import uuid
 from .functions import *
 from .containers import *
+name_node = None
 
 db_host, db_port = "localhost", 27017
 users = {
@@ -47,7 +49,7 @@ class DataNode:
     def __init__(self, data_node_id, server_address):
         self.id = data_node_id
         self.score = None
-        self.server_address = server_address;
+        self.server_address = server_address
         self.assigned_jobs = 0
 
     def add_jobs(self, new_jobs_assigned):
@@ -58,29 +60,65 @@ class DataNode:
 
 
 class Client:
-    def __init__(self, user_id, username, password):
-        self.id = user_id
-        self.state = "stop"
+    def __init__(self, client_id, username, password, input_container, output_container, operation):
+        self.client_id = client_id
+        self.state = "init"
         self.username = username
         self.password = password
-        self.containers = Containers(db_host, db_port, username, password, user_id)
-
-    def assign_job(self, input_container, output_container, operation):
         self.input_container = input_container
         self.output_container = output_container
         self.operation = operation
+        self.jobs = {}
+        self.containers = Containers(db_host, db_port, username, password, user_id)
+        self.containers.open(self.input_container)
+        self.input_file_names = self.containers.list_files()
+        self.njobs = len(self.input_file_names)
+        for input_file_name in self.input_file_names:
+            self.jobs[input_file_name] = None
 
     def assign_workers(self, data_nodes):
+        #mohit code
+        for job_id in range(self.njobs):
+            pass
+        
         self.containers.open(self.input_container)
-        
-        size = self.containers.len_files()
-        pool_values = []
-        for data_node in data_nodes:
-            pool_values.append(data_node.score / (data_node.assigned_jobs + 1))
+        input_files = self.containers.list_files
 
-        print(pool_values)
-        pool_total = sum(pool_values)
-        
+        data_node_stats = name_node.get_data_nodes()
+        sum_benchmark = 0
+        sum_load = 0
+        #data_node_stats = {data_node_id : [benchmark,load,...]}
+        for data_node_id,data_node_stat in data_node_stats.items():
+            sum_benchmark += data_node_stat[0]
+            sum_load += data_node_stat[1]
+        #share = {data_node_id : number_of_files_to_be_sent} 
+        share = {}
+        for data_node_id,data_node_stat in data_node_stats.items():
+            ratio = data_node_stat[0]/sum_benchmark
+            share[data_node_id] = math.ceil(ratio * self.njobs)
+        print(share)
+        offset = 0
+        for data_node_id in data_node_stats:
+            print(offset)
+            for input_file in self.input_file_names[offset:offset + share[data_node_id]]:
+                self.jobs[input_file] = data_node_id
+            offset += share[data_node_id]
+        print(self.jobs)
+
+    def start_workers(self):
+        # Send job to the worker
+        self.state = "start"
+        pass
+
+    def track_workers(self):
+        # Track workers who have finished their  jobs
+        # If all jobs are finished mark job as finished
+        pass
+
+    def realloc_worker(self, worker_id):
+        # Realloc stalled workers
+        pass
+ 
 
 
 
@@ -104,7 +142,7 @@ class Job:
 
         # Get worker list
         for data_node in data_nodes:
-            pass
+            sum_score = 0
         self.state = "ready"
         pass
 
@@ -144,6 +182,12 @@ class NameNode:
 
     # Event handlers
     # Client handlers
+    def get_data_nodes(self):
+        #returns the list of data_nodes and its stats
+        data_nodes = {}
+        for data_node_id, data_node in self.data_nodes.items():
+            data_nodes[data_node_id] = data_node.get_stats()
+        return data_nodes
 
     def client_map(self, user_id, data):
         print("map")
@@ -288,6 +332,7 @@ class NameNode:
 
 if __name__ == "__main__":
     try:
+        global name_node
         name_node = NameNode()
         server = Server()
         server.start(handle, name_node)
