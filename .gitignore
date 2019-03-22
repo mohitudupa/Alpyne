@@ -4,4 +4,6 @@
 .config
 */__pycache__
 __pycache__
-
+build
+dist
+Alpyne.egg-info

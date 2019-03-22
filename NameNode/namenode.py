@@ -332,7 +332,6 @@ class NameNode:
 
 if __name__ == "__main__":
     try:
-        global name_node
         name_node = NameNode()
         server = Server()
         server.start(handle, name_node)
