@@ -35,7 +35,7 @@ class Task:
     
     def get_compute_nodes(self):
         if self.logged_in:
-            self.compute_nodes = self.session.get('http://{self.DBS_H}:{self.DBS_P}/compute/nodes/')
+            self.compute_nodes = self.session.get(f'http://{self.DBS_H}:{self.DBS_P}/compute/nodes/').json()
 
     def distribute(self, files: list) -> None:
         """
@@ -61,6 +61,20 @@ class Task:
             except IndexError:
                 self.share[compute_node] = files[:]
 
+    def compute_login(self, hostname):
+        session = requests.session()
+        res = session.post(url=f'http://{hostname}/user/login/', data={
+            'username': self.username,
+            'password': self.password
+        })
+
+        print('login', res, res.json())
+
+        if res.status_code != 200 or ('error' in res.json()):
+            raise AssertionError()
+
+        return session
+
     def task(self, code: str, inp: str, out: str):
         failed = []
         for compute_node in self.compute_nodes:
@@ -68,40 +82,37 @@ class Task:
             share_count = self.share[hostname]
             if not share_count:
                 continue
-            
-            data = {}
-            data['code']: code
-            data['args'] = [[inp, out, file] for file in self.share[hostname]]
-            data['kwargs'] = [{} for _ in self.share[hostname]]
-        
+
+            session = None
+
+            try:
+                session = self.compute_login(hostname)
+
+                session.get(url=f'http://{hostname}/engine/jobs/')
+
+                data = {
+                    'code': code,
+                    'args': [[inp, out, file] for file in self.share[hostname]],
+                    'kwargs': [{} for _ in self.share[hostname]],
+                }
+
+                print(data)
+
+                res = session.post(url=f'http://{hostname}/engine/jobs/', headers={
+                    'X-CSRFToken': session.cookies['csrftoken']
+                }, json=data)
+
+                print('task', res.text)
+
+                if res.status_code != 200:
+                    raise AssertionError()
+
+                session.get(url=f'http://{hostname}/user/logout/')
+
+            except AssertionError:
+                failed += self.share[hostname]
+            finally:
+                if session:
+                    session.close()
+
         return failed
-
-
-t = None
-
-
-def main():
-    global t
-    t = Task('', '', '', '')
-    t.distribute(list(range(10)))
-    print(t.task('code.py', 'input', 'output'))
-
-
-main()
-
-"""
-[
-    {
-        'compute_node_id': uuid,
-        'hostname': '127.0.0.1:80',
-        'score': 231231,
-        'description': 'some desc'
-    },
-    {
-        'compute_node_id': uuid,
-        'hostname': '127.0.0.1:81',
-        'score': 231231,
-        'description': 'some desc'
-    },
-]
-"""
