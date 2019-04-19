@@ -6,14 +6,14 @@ containers = None
 
 
 class Containers:
-    def __init__(self, db_host: str, db_port: int, username: str, password: str, client_id: str):
+    def __init__(self, db_host: str, db_port: int, username: str, password: str, db: str):
         """
             Arguments:
                 db_host: str    -host-ip or host-name of the mongo database
                 db_port: int    -port number of the mongo database
                 username: str   -Username of the mongo database
                 password: str   -Password for the user account
-                client_id: str  -Client ID; Name of the database assigned to the user
+                db: str  -database; Name of the database assigned to the user
 
             Action:
                 Creates a containers object for the user
@@ -24,19 +24,19 @@ class Containers:
         self.username = username
         self.password = password
         self.client = MongoClient(db_host, db_port)
-        self.db = self.client[client_id]
+        self.db = self.client[db]
         self.fs = gridfs.GridFS(self.db)
         self.containers = self.db["state"].find_one({"type": "containers"})
         self.container = 'recovery'
     
-    def __enter__(self, db_host: str, db_port: int, username: str, password: str, client_id: str):
+    def __enter__(self, db_host: str, db_port: int, username: str, password: str, db: str):
         """
             Arguments:
                 db_host: str    -host-ip or host-name of the mongo database
                 db_port: int    -port number of the mongo database
                 username: str   -Username of the mongo database
                 password: str   -Password for the user account
-                client_id: str  -Client ID; Name of the database assigned to the user
+                db: str  -database; Name of the database assigned to the user
 
             Action:
                 Creates a containers object for the user
@@ -45,7 +45,7 @@ class Containers:
                 Returns an object of the class Containers
         """
         self.client = MongoClient(db_host, db_port)
-        self.db = self.client[client_id]
+        self.db = self.client[db]
         self.fs = gridfs.GridFS(self.db)
         self.containers = self.db["state"].find_one({"type": "containers"})
         self.container = 'recovery'
@@ -324,7 +324,7 @@ class Containers:
 
 def main():
     global containers
-    containers = Containers("localhost", 27017, "mohit", "password for fs", "80cf72a4083211e9aaacf8cab814c762")
+    containers = Containers("localhost", 27017, "mohit", "password for fs", "test")
 
 
 if __name__ == '__main__':

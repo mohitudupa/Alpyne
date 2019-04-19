@@ -27,7 +27,8 @@ setup(
   # If there are any packages in the project that need to be installed, specify them here or use find_packages
   # module to let it do for you
   # http://setuptools.readthedocs.io/en/latest/setuptools.html#using-find-packages
-  packages=find_packages(exclude=["NameNode"]),
+  packages=['Alpyne'],
+  install_requires=['requests', 'pymongo'],
   # List all the dependencies here. These will be installed by pip when the project is being installed
   # https://packaging.python.org/discussions/install-requires-vs-requirements/#install-requires
 )
