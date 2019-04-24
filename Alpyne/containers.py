@@ -2,8 +2,6 @@ from pymongo import MongoClient, ReturnDocument
 import gridfs
 import uuid
 
-containers = None
-
 
 class Containers:
     def __init__(self, db_host: str, db_port: int, username: str, password: str, db: str):
@@ -27,6 +25,8 @@ class Containers:
         self.db = self.client[db]
         self.fs = gridfs.GridFS(self.db)
         self.containers = self.db["state"].find_one({"type": "containers"})
+        if not self.containers:
+            self.db["state"].insert_one({"type": "containers"})
         self.container = 'recovery'
     
     def __enter__(self, db_host: str, db_port: int, username: str, password: str, db: str):
@@ -320,12 +320,3 @@ class Containers:
                 None
         """
         self.client.close()
-
-
-def main():
-    global containers
-    containers = Containers("localhost", 27017, "mohit", "password for fs", "test")
-
-
-if __name__ == '__main__':
-    main()

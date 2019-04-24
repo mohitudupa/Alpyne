@@ -2,6 +2,7 @@ from functools import wraps, reduce
 import pickle
 import requests
 import math
+import time
 
 
 def upload_dataset(data, inp, containers):
@@ -148,6 +149,10 @@ class Task:
             raise AssertionError(f'Failed to load job on host {self.host}')
 
         return res.json()['score']
+
+    def join(self):
+        while not self.status():
+            time.sleep(1)
 
     def close(self):
         self.session.get(url=f'http://{self.host}/user/logout/')
